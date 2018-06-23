@@ -1,6 +1,5 @@
 import sys
 import os
-import time
 
 import pandas as pd
 
@@ -17,6 +16,7 @@ class Const:
 
 
 class DataPreparer:
+    """Performs filling missing values and features creation"""
 
     def __init__(self, train, unlabeled, test):
         self.train = train
@@ -107,11 +107,11 @@ class DataPreparer:
         features = ["{}_{}".format(b, str(i)) for i in [0, 3, 4, 5] for b in Const.BANDS_ALL]
         is_above_features = ["{}_above".format(f) for f in features]
 
-        means = data[features].median()
+        medians = data[features].median()
 
         is_above_df = pd.DataFrame(columns=is_above_features)
         for f, is_above_f in zip(features, is_above_features):
-            is_above_df[is_above_f] = data[f] > means[f]
+            is_above_df[is_above_f] = data[f] > medians[f]
 
         # sum is_above by measurement (0-th, 3-rd, 4-th and 5-th features)
         num_of_above_columns = ['0th_above', '3rd_above', '4th_above', '5th_above']
