@@ -85,15 +85,15 @@ class DataPreparer:
 
         # fill rest of '-0' with mean values
         zeros_features = ["{}_0".format(b) for b in Const.BANDS_ALL]
-        self.train[zeros_features].fillna(self.train[zeros_features].mean(), inplace=True)
-        self.test[zeros_features].fillna(self.test[zeros_features].mean(), inplace=True)
+        self.train.fillna(self.train[zeros_features].mean(), inplace=True)
+        self.test.fillna(self.test[zeros_features].mean(), inplace=True)
 
         # fill '-3', '-4' and '-5' with median values
         indx = ['3', '4', '5']
         columns_to_fill = ["{}_{}".format(b, i) for b in Const.BANDS_ALL for i in indx]
 
-        self.train[columns_to_fill].fillna(self.train[columns_to_fill].median(), inplace=True)
-        self.test[columns_to_fill].fillna(self.test[columns_to_fill].median(), inplace=True)
+        self.train.fillna(self.train[columns_to_fill].median(), inplace=True)
+        self.test.fillna(self.test[columns_to_fill].median(), inplace=True)
 
         # fill all the rest NaNs with mean values (should be only 'rowv' and 'colv')
         self.train.fillna(self.train.mean(), inplace=True)
@@ -118,6 +118,7 @@ class DataPreparer:
         return num_of_above
 
     def _convert_6th_variable(self):
+        # convert '-6' variable using one-hot encoding
         features = ["{}_6".format(b) for b in Const.BANDS_ALL]
 
         dummy_train = pd.DataFrame()
@@ -128,7 +129,6 @@ class DataPreparer:
 
         # in case test set has values train set doesn't have
         values = ["{}_{}".format(f, i) for f in features for i in range(9)]
-
         dummy_train = dummy_train.reindex(columns=values).fillna(0).astype('int64')
         dummy_test = dummy_test.reindex(columns=values).fillna(0).astype('int64')
 
@@ -155,8 +155,8 @@ class DataPreparer:
         indx = ['1', '2']
         columns_to_drop = ["{}_{}".format(b, i) for b in Const.BANDS_ALL for i in indx]
         columns_to_drop.extend(['ra', 'dec', 'colc', 'rowc'])
-        self.train = self.train.drop(columns_to_drop, axis=1)
-        self.test = self.test.drop(columns_to_drop, axis=1)
+        self.train.drop(columns_to_drop, axis=1, inplace=True)
+        self.test.drop(columns_to_drop, axis=1, inplace=True)
 
         # prepare '-6' variable
         self._convert_6th_variable()
@@ -176,7 +176,9 @@ def make_predictions(train, test):
     X_train = train.drop(['objid', 'class'], axis=1)
     y_train = train['class']
 
-    X_test = test.drop(['objid', 'class'], axis=1)
+    X_test = test.drop(['objid'], axis=1)
+    if 'class' in X_test.columns:
+        X_test = X_test.drop(['class'], axis=1)
 
     scaler = StandardScaler()
     scaler.fit(X_train)
@@ -201,7 +203,6 @@ def main():
         print("Wrong number of parameters")
         return
 
-    start = time.time()
     train, unlabeled, test = [read_csv_file(path) for path in parameters[1:4]]
     predictions_path = parameters[4]
 
@@ -210,10 +211,7 @@ def main():
     train, unlabeled, test = data_preparer.get_datasets()
 
     predictions = make_predictions(train, test)
-    end = time.time()
-
     write_prediction(test['objid'], predictions, predictions_path)
-    print("prediction done in {} sec".format(end - start))
 
 
 if __name__ == '__main__':
