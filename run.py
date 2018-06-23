@@ -58,26 +58,29 @@ class DataPreparer:
             idx = samples_to_predict.index
             data.loc[idx, col_name] = predicted
 
-    def _fill_0th_with_regression(self):
-        zeros_features = ["{}_0".format(b) for b in Const.BANDS_ALL]
-
+    def get_regression_order(self, zeros_features):
         # determine the order of applying regression: order features by correlation strength
         corr_matrix = self.train[zeros_features].corr()
         order = {}
         for f in zeros_features:
-            order[f] = corr_matrix[f].argsort()[-2::-1].values
+            features_order = corr_matrix[f].argsort()[-2::-1].values
+            order[f] = [zeros_features[i] for i in features_order]
+        return order
+
+    def _fill_0th_with_regression(self):
+        zeros_features = ["{}_0".format(b) for b in Const.BANDS_ALL]
+
+        order = self.get_regression_order(zeros_features)
 
         for step in range(4):
             replacement_scheme = []
 
             for f in zeros_features:
-                base_col = zeros_features[order[f][step]]
+                base_col = order[f][step]
                 replacement_scheme.append((f, base_col))
 
             for col, based_on_col in replacement_scheme:
                 self._fill_nans_based_on_regression(col, based_on_col, self.train)
-
-            for col, based_on_col in replacement_scheme:
                 self._fill_nans_based_on_regression(col, based_on_col, self.test)
 
     def _handle_missing_values(self):
